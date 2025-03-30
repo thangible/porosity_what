@@ -4,24 +4,36 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, random_split
 from torchvision.models import resnet50, ResNet50_Weights
 from torchvision.transforms import Compose, ToTensor, Normalize, Resize
-from dataset import process_data, df, image_dir
+from dataset import PorosityDataset
+from torchvision.transforms import ToPILImage
 import wandb
+import os
 
+# Define the path to the image directory and CSV file
+image_dir = os.path.join('..', 'data')
+csv_path = os.path.join('..', 'data', 'image_data.txt')
 
+# Define transformations for the images
+transform = Compose([
+    Resize((224, 224)),
+    ToTensor(),                 
+    Normalize(mean=[0.485, 0.456, 0.406],
+              std=[0.229, 0.224, 0.225])
+])
+
+# Read the CSV file into a pandas DataFrame
+df = pd.read_csv(csv_path, header=None, names=["path", "name", "magnification", "porosity"])[:8]
+df["path"] = df["path"].str.replace("\\", "/", regex=False)
 
 # Training and validation loop
 num_epochs = 100
 dimensions = (224, 224)
 batch_size = 8
 
-# Define transformations for the images
-transform = Compose([
-    Resize((224, 224)),  # Resize images to 224x224 for ResNet50
-    Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize as per ResNet50 requirements
-])
 
 # Process the dataset
-dataset = process_data(df, image_dir, dimensions)
+dataset = PorosityDataset(df, image_dir, transform=transform)
+
 
 # Split the dataset into training (80%) and validation (20%)
 train_size = int(0.8 * len(dataset))
@@ -66,10 +78,10 @@ for epoch in range(num_epochs):
     correct = 0
     total = 0
     for images, labels in train_loader:  # Unpack images and labels
-        print(f"Image batch shape: {images.shape}, Labels batch type: {type(labels)}")
-        print(f"Type of image: {type(images)}")
-        images = torch.stack([transform(image) for image in images])  # Apply transformations
-        labels = torch.tensor(labels)
+        # print(f"Image batch shape: {images.shape}, Labels batch type: {type(labels)}")
+        # print(f"Type of image: {type(images)}")
+        # images = torch.stack([transform(image) for image in images])  # Apply transformations
+        # labels = torch.tensor(labels)
 
         images, labels = images.to(device), labels.to(device)
 
