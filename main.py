@@ -60,9 +60,11 @@ model = model.to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
+import time  # để đo thời gian mỗi epoch
+
 # Initialize W&B
 wandb.init(
-    project="resnet50-porosity",  # Replace with your project name
+    project="resnet50-porosity",
     config={
         "epochs": num_epochs,
         "batch_size": batch_size,
@@ -73,17 +75,14 @@ wandb.init(
 )
 
 for epoch in range(num_epochs):
-    # Training phase
+    start_time = time.time()
+
+    # ---------------- TRAINING ----------------
     model.train()
     train_loss = 0.0
     correct = 0
     total = 0
-    for images, labels in train_loader:  # Unpack images and labels
-        # print(f"Image batch shape: {images.shape}, Labels batch type: {type(labels)}")
-        # print(f"Type of image: {type(images)}")
-        # images = torch.stack([transform(image) for image in images])  # Apply transformations
-        # labels = torch.tensor(labels)
-
+    for images, labels in train_loader:
         images, labels = images.to(device), labels.to(device)
 
         optimizer.zero_grad()
@@ -97,25 +96,17 @@ for epoch in range(num_epochs):
         total += labels.size(0)
         correct += predicted.eq(labels).sum().item()
 
+    train_loss_avg = train_loss / len(train_loader)
     train_accuracy = 100. * correct / total
-    print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss/len(train_loader):.4f}, Train Accuracy: {train_accuracy:.2f}%")
 
-    # Log training metrics to W&B
-    wandb.log({"epoch": epoch + 1, "train_loss": train_loss_avg, "train_accuracy": train_accuracy})
-
-
-    # Validation phase
+    # ---------------- VALIDATION ----------------
     model.eval()
     val_loss = 0.0
     correct = 0
     total = 0
     with torch.no_grad():
-        for images, labels in val_loader:  # Unpack images and labels
-            # images = torch.stack([transform(image) for image in images])  # Apply transformations
-            # labels = torch.tensor(labels)
-
+        for images, labels in val_loader:
             images, labels = images.to(device), labels.to(device)
-
             outputs = model(images)
             loss = criterion(outputs, labels)
 
@@ -124,7 +115,20 @@ for epoch in range(num_epochs):
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
 
+    val_loss_avg = val_loss / len(val_loader)
     val_accuracy = 100. * correct / total
-    print(f"Epoch {epoch+1}/{num_epochs}, Val Loss: {val_loss/len(val_loader):.4f}, Val Accuracy: {val_accuracy:.2f}%")
-    # Log validation metrics to W&B
-    wandb.log({"epoch": epoch + 1, "val_loss": val_loss_avg, "val_accuracy": val_accuracy})
+
+    # ---------------- LOGGING ----------------
+    epoch_duration = time.time() - start_time
+    print(f"Epoch {epoch+1}/{num_epochs} | Train Loss: {train_loss_avg:.4f}, Acc: {train_accuracy:.2f}% | "
+          f"Val Loss: {val_loss_avg:.4f}, Acc: {val_accuracy:.2f}% | Time: {epoch_duration:.1f}s")
+
+    wandb.log({
+        "epoch": epoch + 1,
+        "train_loss": train_loss_avg,
+        "train_accuracy": train_accuracy,
+        "val_loss": val_loss_avg,
+        "val_accuracy": val_accuracy,
+        "epoch_time_sec": epoch_duration,
+        "learning_rate": optimizer.param_groups[0]['lr']
+    })
