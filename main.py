@@ -12,6 +12,12 @@ import numpy as np
 import os
 from sklearn.metrics import mean_absolute_error, r2_score
 
+# Training and validation loop
+num_epochs = 100
+dimensions = (1024,1024)
+batch_size = 8
+
+
 
 # Define the path to the image directory and CSV file
 image_dir = os.path.join('..', 'data')
@@ -19,7 +25,7 @@ csv_path = os.path.join('..', 'data', 'image_data.txt')
 
 # Define transformations for the images
 transform = Compose([
-    Resize((224, 224)),
+    Resize(dimensions),
     ToTensor(),                 
     Normalize(mean=[0.485, 0.456, 0.406],
               std=[0.229, 0.224, 0.225])
@@ -29,10 +35,6 @@ transform = Compose([
 df = pd.read_csv(csv_path, header=None, names=["path", "name", "magnification", "porosity"])
 df["path"] = df["path"].str.replace("\\", "/", regex=False)
 
-# Training and validation loop
-num_epochs = 100
-dimensions = (224, 224)
-batch_size = 8
 
 
 # Set seed for reproducibility
