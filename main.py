@@ -32,6 +32,9 @@ dimensions = (224, 224)
 batch_size = 8
 
 
+# Set seed for reproducibility
+generator = torch.Generator().manual_seed(42)
+
 # Process the dataset
 dataset = PorosityDataset(df, image_dir, transform=transform)
 
@@ -39,7 +42,7 @@ dataset = PorosityDataset(df, image_dir, transform=transform)
 # Split the dataset into training (80%) and validation (20%)
 train_size = int(0.8 * len(dataset))
 val_size = len(dataset) - train_size
-train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+train_dataset, val_dataset = random_split(dataset, [train_size, val_size], generator=generator)
 
 # Define DataLoaders
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
