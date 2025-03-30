@@ -7,7 +7,7 @@ from torchvision.transforms import Compose, ToTensor, Normalize, Resize
 from dataset import PorosityDataset
 from torchvision.transforms import ToPILImage
 import pandas as pd
-import wandb
+# import wandb
 import os
 
 # Define the path to the image directory and CSV file
@@ -60,17 +60,17 @@ model = model.to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-# Initialize W&B
-wandb.init(
-    project="resnet50-porosity",  # Replace with your project name
-    config={
-        "epochs": num_epochs,
-        "batch_size": batch_size,
-        "learning_rate": 0.001,
-        "model": "ResNet50",
-        "image_size": dimensions,
-    }
-)
+# # Initialize W&B
+# wandb.init(
+#     project="resnet50-porosity",  # Replace with your project name
+#     config={
+#         "epochs": num_epochs,
+#         "batch_size": batch_size,
+#         "learning_rate": 0.001,
+#         "model": "ResNet50",
+#         "image_size": dimensions,
+#     }
+# )
 
 for epoch in range(num_epochs):
     # Training phase
@@ -101,7 +101,7 @@ for epoch in range(num_epochs):
     print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss/len(train_loader):.4f}, Train Accuracy: {train_accuracy:.2f}%")
 
     # Log training metrics to W&B
-    wandb.log({"epoch": epoch + 1, "train_loss": train_loss_avg, "train_accuracy": train_accuracy})
+    # wandb.log({"epoch": epoch + 1, "train_loss": train_loss_avg, "train_accuracy": train_accuracy})
 
 
     # Validation phase
@@ -111,8 +111,8 @@ for epoch in range(num_epochs):
     total = 0
     with torch.no_grad():
         for images, labels in val_loader:  # Unpack images and labels
-            images = torch.stack([transform(image) for image in images])  # Apply transformations
-            labels = torch.tensor(labels)
+            # images = torch.stack([transform(image) for image in images])  # Apply transformations
+            # labels = torch.tensor(labels)
 
             images, labels = images.to(device), labels.to(device)
 
@@ -127,4 +127,4 @@ for epoch in range(num_epochs):
     val_accuracy = 100. * correct / total
     print(f"Epoch {epoch+1}/{num_epochs}, Val Loss: {val_loss/len(val_loader):.4f}, Val Accuracy: {val_accuracy:.2f}%")
     # Log validation metrics to W&B
-    wandb.log({"epoch": epoch + 1, "val_loss": val_loss_avg, "val_accuracy": val_accuracy})
+    # wandb.log({"epoch": epoch + 1, "val_loss": val_loss_avg, "val_accuracy": val_accuracy})
