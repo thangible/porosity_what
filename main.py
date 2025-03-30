@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, random_split
-from torchvision.models import resnet50, ResNet50_Weights
+from torchvision.models import resnet50, ResNet50_Weights, resnet152, ResNet152_Weights
 from torchvision.transforms import Compose, ToTensor, Normalize, Resize
 from dataset import PorosityDataset
 from torchvision.transforms import ToPILImage
@@ -54,7 +54,8 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
 
 # Load the pretrained ResNet50 model
-model = resnet50(weights=ResNet50_Weights.DEFAULT)
+# model = resnet50(weights=ResNet50_Weights.DEFAULT)
+model = resnet152(weights=ResNet152_Weights.DEFAULT)
 
 # Modify the final fully connected layer to match the number of classes (4 in this case)
 num_classes = 1
