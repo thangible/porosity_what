@@ -7,7 +7,7 @@ from torchvision.transforms import Compose, ToTensor, Normalize, Resize
 from dataset import PorosityDataset
 from torchvision.transforms import ToPILImage
 import pandas as pd
-import wandb
+# import wandb
 import os
 
 # Define the path to the image directory and CSV file
@@ -23,7 +23,7 @@ transform = Compose([
 ])
 
 # Read the CSV file into a pandas DataFrame
-df = pd.read_csv(csv_path, header=None, names=["path", "name", "magnification", "porosity"])
+df = pd.read_csv(csv_path, header=None, names=["path", "name", "magnification", "porosity"])[:4]
 df["path"] = df["path"].str.replace("\\", "/", regex=False)
 
 # Training and validation loop
@@ -38,7 +38,6 @@ generator = torch.Generator().manual_seed(42)
 # Process the dataset
 dataset = PorosityDataset(df, image_dir, transform=transform)
 
-
 # Split the dataset into training (80%) and validation (20%)
 train_size = int(0.8 * len(dataset))
 val_size = len(dataset) - train_size
@@ -48,34 +47,35 @@ train_dataset, val_dataset = random_split(dataset, [train_size, val_size], gener
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
+
 # Load the pretrained ResNet50 model
 model = resnet50(weights=ResNet50_Weights.DEFAULT)
 
 # Modify the final fully connected layer to match the number of classes (4 in this case)
-num_classes = 4
+num_classes = 1
 model.fc = nn.Linear(model.fc.in_features, num_classes)
 
 # Move the model to GPU if available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
 
-# Define loss function and optimizer
-criterion = nn.CrossEntropyLoss()
+# Use MSE loss for regression
+criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 import time  # để đo thời gian mỗi epoch
 
 # Initialize W&B
-wandb.init(
-    project="resnet50-porosity",
-    config={
-        "epochs": num_epochs,
-        "batch_size": batch_size,
-        "learning_rate": 0.001,
-        "model": "ResNet50",
-        "image_size": dimensions,
-    }
-)
+# wandb.init(
+#     project="resnet50-porosity",
+#     config={
+#         "epochs": num_epochs,
+#         "batch_size": batch_size,
+#         "learning_rate": 0.001,
+#         "model": "ResNet50",
+#         "image_size": dimensions,
+#     }
+# )
 
 for epoch in range(num_epochs):
     start_time = time.time()
@@ -126,12 +126,12 @@ for epoch in range(num_epochs):
     print(f"Epoch {epoch+1}/{num_epochs} | Train Loss: {train_loss_avg:.4f}, Acc: {train_accuracy:.2f}% | "
           f"Val Loss: {val_loss_avg:.4f}, Acc: {val_accuracy:.2f}% | Time: {epoch_duration:.1f}s")
 
-    wandb.log({
-        "epoch": epoch + 1,
-        "train_loss": train_loss_avg,
-        "train_accuracy": train_accuracy,
-        "val_loss": val_loss_avg,
-        "val_accuracy": val_accuracy,
-        "epoch_time_sec": epoch_duration,
-        "learning_rate": optimizer.param_groups[0]['lr']
-    })
+    # wandb.log({
+    #     "epoch": epoch + 1,
+    #     "train_loss": train_loss_avg,
+    #     "train_accuracy": train_accuracy,
+    #     "val_loss": val_loss_avg,
+    #     "val_accuracy": val_accuracy,
+    #     "epoch_time_sec": epoch_duration,
+    #     "learning_rate": optimizer.param_groups[0]['lr']
+    # })

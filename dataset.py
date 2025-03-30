@@ -39,5 +39,5 @@ class PorosityDataset(Dataset):
         else:
             label = 3
 
-        return image, label
+        return image, porosity.astype("float32")
 
