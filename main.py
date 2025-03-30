@@ -100,7 +100,7 @@ for epoch in range(num_epochs):
         train_preds.extend(outputs.detach().cpu().numpy())
         train_labels.extend(labels.cpu().numpy())
 
-    print(train_preds, train_labels )
+    # print(train_preds, train_labels )
     train_loss_avg = train_loss / len(train_loader)
     train_mae_avg = mean_absolute_error(train_labels, train_preds)
     train_r2 = r2_score(train_labels, train_preds)
@@ -170,15 +170,19 @@ for epoch in range(num_epochs):
         "learning_rate": optimizer.param_groups[0]['lr']
     })
     
+        # Create a wandb Table with your data
+    table = wandb.Table(data=[[x, y] for x, y in zip(val_labels, val_preds)],
+                        columns=["True", "Predicted"])
+
+    # Log the scatter plot
     wandb.log({
-    "Validation: True vs Predicted": wandb.plot.scatter(
-        xs=val_labels,
-        ys=val_preds,
-        title="Val: True vs Predicted Porosity",
-        xname="True",
-        yname="Predicted"
-    )
-})
+        "Validation: True vs Predicted": wandb.plot.scatter(
+            table,
+            "True",
+            "Predicted",
+            title="Validation: True vs Predicted Porosity"
+        )
+    })
 
 wandb.run.define_metric("epoch")
 wandb.run.define_metric("train_*", step_metric="epoch")
