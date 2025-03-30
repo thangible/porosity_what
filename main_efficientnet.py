@@ -60,7 +60,7 @@ model = efficientnet_b7(weights=EfficientNet_B7_Weights.DEFAULT)
 
 # Modify the final fully connected layer to match the number of classes (4 in this case)
 num_classes = 1
-model.fc = nn.Linear(model.fc.in_features, num_classes)
+model.classifier[1] = nn.Linear(model.classifier[1].in_features, num_classes)
 
 # Move the model to GPU if available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
