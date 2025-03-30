@@ -6,6 +6,7 @@ from torchvision.models import resnet50, ResNet50_Weights
 from torchvision.transforms import Compose, ToTensor, Normalize, Resize
 from dataset import PorosityDataset
 from torchvision.transforms import ToPILImage
+import pandas as pd
 import wandb
 import os
 
