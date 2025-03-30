@@ -8,6 +8,7 @@ from dataset import PorosityDataset
 from torchvision.transforms import ToPILImage
 import pandas as pd
 import wandb
+import numpy as np
 import os
 from sklearn.metrics import mean_absolute_error, r2_score
 
@@ -99,6 +100,7 @@ for epoch in range(num_epochs):
         train_preds.extend(outputs.detach().cpu().numpy())
         train_labels.extend(labels.cpu().numpy())
 
+    print(train_preds, train_labels )
     train_loss_avg = train_loss / len(train_loader)
     train_mae_avg = mean_absolute_error(train_labels, train_preds)
     train_r2 = r2_score(train_labels, train_preds)
@@ -117,7 +119,11 @@ for epoch in range(num_epochs):
             val_loss += loss.item()
             val_preds.extend(outputs.cpu().numpy())
             val_labels.extend(labels.cpu().numpy())
-
+            
+    print("Sample val_labels:", val_labels[:5])
+    print("Sample val_preds:", val_preds[:5])
+    print("Any NaNs in val_labels?", np.isnan(val_labels).any())
+    print("Any NaNs in val_preds?", np.isnan(val_preds).any())
     val_loss_avg = val_loss / len(val_loader)
     val_mae_avg = mean_absolute_error(val_labels, val_preds)
     val_r2 = r2_score(val_labels, val_preds)
