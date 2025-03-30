@@ -35,7 +35,7 @@ def process_data(df, image_dir, dimensions=(224, 224)):
             # Convert from BGR to RGB (as expected by most models)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             # Convert image to float32 and normalize to range [0, 1]
-            image = image.astype('float32') / 255.0
+            image = image / 255.0
             # Rearrange the image to channel-first format (C, H, W)
             image = image.transpose(2, 0, 1)
             if row["porosity"] <= 0.05:
