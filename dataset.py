@@ -9,6 +9,7 @@ csv_path = os.path.join('..', 'data', 'image_data.txt')
 
 # Read the CSV file into a pandas DataFrame
 df = pd.read_csv(csv_path, header=None, names=["path", "name", "magnification", "porosity"])[:8]
+df["path"] = df["path"].str.replace("\\", "/", regex=False)
 
 class PorosityDataset(Dataset):
     def __init__(self, data):
