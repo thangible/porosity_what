@@ -7,8 +7,10 @@ from torchvision.transforms import Compose, ToTensor, Normalize, Resize
 from dataset import PorosityDataset
 from torchvision.transforms import ToPILImage
 import pandas as pd
-# import wandb
+import wandb
 import os
+from sklearn.metrics import mean_absolute_error, r2_score
+
 
 # Define the path to the image directory and CSV file
 image_dir = os.path.join('..', 'data')
@@ -23,7 +25,7 @@ transform = Compose([
 ])
 
 # Read the CSV file into a pandas DataFrame
-df = pd.read_csv(csv_path, header=None, names=["path", "name", "magnification", "porosity"])[:4]
+df = pd.read_csv(csv_path, header=None, names=["path", "name", "magnification", "porosity"])
 df["path"] = df["path"].str.replace("\\", "/", regex=False)
 
 # Training and validation loop
@@ -66,72 +68,118 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 import time  # để đo thời gian mỗi epoch
 
 # Initialize W&B
-# wandb.init(
-#     project="resnet50-porosity",
-#     config={
-#         "epochs": num_epochs,
-#         "batch_size": batch_size,
-#         "learning_rate": 0.001,
-#         "model": "ResNet50",
-#         "image_size": dimensions,
-#     }
-# )
-
+wandb.init(
+    project="resnet50-porosity",
+    config={
+        "epochs": num_epochs,
+        "batch_size": batch_size,
+        "learning_rate": 0.001,
+        "model": "ResNet50",
+        "image_size": dimensions,
+    }
+)
 for epoch in range(num_epochs):
     start_time = time.time()
 
-    # ---------------- TRAINING ----------------
+    # -------- TRAINING --------
     model.train()
-    train_loss = 0.0
-    correct = 0
-    total = 0
+    train_loss, train_mae = 0.0, 0.0
+    train_preds, train_labels = [], []
+
     for images, labels in train_loader:
         images, labels = images.to(device), labels.to(device)
 
         optimizer.zero_grad()
-        outputs = model(images)
+        outputs = model(images).squeeze()
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
 
         train_loss += loss.item()
-        _, predicted = outputs.max(1)
-        total += labels.size(0)
-        correct += predicted.eq(labels).sum().item()
+        train_preds.extend(outputs.detach().cpu().numpy())
+        train_labels.extend(labels.cpu().numpy())
 
     train_loss_avg = train_loss / len(train_loader)
-    train_accuracy = 100. * correct / total
+    train_mae_avg = mean_absolute_error(train_labels, train_preds)
+    train_r2 = r2_score(train_labels, train_preds)
 
-    # ---------------- VALIDATION ----------------
+    # -------- VALIDATION --------
     model.eval()
-    val_loss = 0.0
-    correct = 0
-    total = 0
+    val_loss, val_mae = 0.0, 0.0
+    val_preds, val_labels = [], []
+
     with torch.no_grad():
         for images, labels in val_loader:
             images, labels = images.to(device), labels.to(device)
-            outputs = model(images)
+            outputs = model(images).squeeze()
             loss = criterion(outputs, labels)
 
             val_loss += loss.item()
-            _, predicted = outputs.max(1)
-            total += labels.size(0)
-            correct += predicted.eq(labels).sum().item()
+            val_preds.extend(outputs.cpu().numpy())
+            val_labels.extend(labels.cpu().numpy())
 
     val_loss_avg = val_loss / len(val_loader)
-    val_accuracy = 100. * correct / total
+    val_mae_avg = mean_absolute_error(val_labels, val_preds)
+    val_r2 = r2_score(val_labels, val_preds)
+    
+    if epoch % 10 == 0:  # or just once at the end
+        # Log up to 8 sample images
+        num_samples = min(8, len(val_dataset))
+        sample_imgs, sample_labels = zip(*[val_dataset[i] for i in range(num_samples)])
+        sample_imgs_tensor = torch.stack(sample_imgs).to(device)
+        model.eval()
+        with torch.no_grad():
+            preds = model(sample_imgs_tensor).squeeze().cpu().numpy()
 
-    # ---------------- LOGGING ----------------
+        # Prepare image logs
+        table = wandb.Table(columns=["Image", "True Porosity", "Predicted Porosity"])
+        to_pil = ToPILImage()
+
+        for i in range(num_samples):
+            img = to_pil(sample_imgs[i].cpu())
+            true_val = round(float(sample_labels[i].item()), 4)
+            pred_val = round(float(preds[i]), 4)
+
+            table.add_data(wandb.Image(img), true_val, pred_val)
+
+        wandb.log({"Sample Predictions": table})
+
+
+    # -------- LOGGING --------
     epoch_duration = time.time() - start_time
-    print(f"Epoch {epoch+1}/{num_epochs} | Train Loss: {train_loss_avg:.4f}, Acc: {train_accuracy:.2f}% | "
-          f"Val Loss: {val_loss_avg:.4f}, Acc: {val_accuracy:.2f}% | Time: {epoch_duration:.1f}s")
+    print(f"Epoch {epoch+1}/{num_epochs} | "
+          f"Train Loss: {train_loss_avg:.4f}, MAE: {train_mae_avg:.4f}, R²: {train_r2:.4f} | "
+          f"Val Loss: {val_loss_avg:.4f}, MAE: {val_mae_avg:.4f}, R²: {val_r2:.4f} | "
+          f"Time: {epoch_duration:.1f}s")
 
-    # wandb.log({
-    #     "epoch": epoch + 1,
-    #     "train_loss": train_loss_avg,
-    #     "train_accuracy": train_accuracy,
-    #     "val_loss": val_loss_avg,
-    #     "val_accuracy": val_accuracy,
-    #     "epoch_time_sec": epoch_duration,
-    #     "learning_rate": optimizer.param_groups[0]['lr']
-    # })
+    wandb.log({
+        "epoch": epoch + 1,
+        "train_loss": train_loss_avg,
+        "train_mae": train_mae_avg,
+        "train_r2": train_r2,
+        "val_loss": val_loss_avg,
+        "val_mae": val_mae_avg,
+        "val_r2": val_r2,
+        "epoch_time_sec": epoch_duration,
+        "learning_rate": optimizer.param_groups[0]['lr']
+    })
+    
+    wandb.log({
+    "Validation: True vs Predicted": wandb.plot.scatter(
+        xs=val_labels,
+        ys=val_preds,
+        title="Val: True vs Predicted Porosity",
+        xname="True",
+        yname="Predicted"
+    )
+})
+
+wandb.run.define_metric("epoch")
+wandb.run.define_metric("train_*", step_metric="epoch")
+wandb.run.define_metric("val_*", step_metric="epoch")
+
+# Group plots logically in dashboard
+wandb.define_metric("train_loss", summary="min")
+wandb.define_metric("val_loss", summary="min")
+wandb.define_metric("train_r2", summary="max")
+wandb.define_metric("val_r2", summary="max")
